@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="SshConfigs">
+    <configs>
+      <sshConfig authType="PASSWORD" connectionConfig="{&quot;serverAliveInterval&quot;:300}" host="192.168.3.115" id="63700e73-9db1-48ae-be46-2887ecf3487e" port="22" nameFormat="DESCRIPTIVE" username="pi" useOpenSSHConfig="true" />
+      <sshConfig authType="PASSWORD" host="192.168.3.100" id="7a7610b1-bcf6-4c1e-9c93-4d2728d1542b" port="22" nameFormat="DESCRIPTIVE" username="edgeboard" useOpenSSHConfig="true" />
+    </configs>
+  </component>
+</project>
