@@ -4,40 +4,31 @@ import cv2
 import time
 import numpy as np
 import random
+import os
 
-def create_pedestrian_frame(width, height, pedestrians):
+def draw_realistic_face(frame, x, y):
     """
-    创建一个包含移动人物的模拟监控画面
+    在指定位置绘制具有人脸特征的几何图形，确保 Haar Cascade 能够识别
     """
-    # 深灰色背景模拟夜间监控或室内停车场
-    frame = np.full((height, width, 3), (40, 40, 40), dtype=np.uint8)
+    # 脸部轮廓 (椭圆)
+    cv2.ellipse(frame, (x + 50, y + 60), (40, 50), 0, 0, 360, (200, 200, 200), -1)
     
-    # 画一些网格线增加科技感
-    for i in range(0, width, 100):
-        cv2.line(frame, (i, 0), (i, height), (60, 60, 60), 1)
-    for i in range(0, height, 100):
-        cv2.line(frame, (0, i), (width, i), (60, 60, 60), 1)
+    # 眼睛 (Haar Cascade 识别的关键特征)
+    cv2.circle(frame, (x + 35, y + 45), 6, (255, 255, 255), -1) # 左眼白
+    cv2.circle(frame, (x + 35, y + 45), 3, (0, 0, 0), -1)       # 左瞳孔
+    cv2.circle(frame, (x + 65, y + 45), 6, (255, 255, 255), -1) # 右眼白
+    cv2.circle(frame, (x + 65, y + 45), 3, (0, 0, 0), -1)       # 右瞳孔
+    
+    # 眉毛
+    cv2.line(frame, (x + 25, y + 35), (x + 45, y + 35), (50, 50, 50), 2)
+    cv2.line(frame, (x + 55, y + 35), (x + 75, y + 35), (50, 50, 50), 2)
 
-    # 绘制移动的人物（用矩形表示，模拟行人检测的真实输入）
-    for p in pedestrians:
-        # 更新位置
-        p['x'] += p['vx']
-        p['y'] += p['vy']
-        
-        # 边界检测
-        if p['x'] < 0 or p['x'] > width - 40: p['vx'] *= -1
-        if p['y'] < 0 or p['y'] > height - 100: p['vy'] *= -1
-        
-        # 绘制“人物”主体
-        x, y = int(p['x']), int(p['y'])
-        cv2.rectangle(frame, (x, y), (x + 40, y + 100), (200, 200, 200), -1)
-        # 绘制头部
-        cv2.circle(frame, (x + 20, y + 20), 15, (200, 200, 200), -1)
-        # 绘制眼睛（模拟方向）
-        eye_x = x + 25 if p['vx'] > 0 else x + 15
-        cv2.circle(frame, (eye_x, y + 15), 3, (50, 50, 50), -1)
-
-    return frame
+    # 鼻子
+    pts = np.array([[x + 50, y + 50], [x + 45, y + 70], [x + 55, y + 70]], np.int32)
+    cv2.fillPoly(frame, [pts], (150, 150, 150))
+    
+    # 嘴巴
+    cv2.ellipse(frame, (x + 50, y + 85), (15, 8), 0, 0, 180, (100, 100, 100), 2)
 
 def send_video():
     context = zmq.Context()
@@ -46,70 +37,89 @@ def send_video():
     
     width, height = 640, 480
     
-    # 初始化一些随机移动的人物
-    pedestrians = []
-    for _ in range(3):
-        pedestrians.append({
-            'x': random.randint(50, width-100),
+    # 加载 OpenCV 内置的 Haar Cascade 人脸检测模型
+    cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
+    face_cascade = cv2.CascadeClassifier(cascade_path)
+    
+    if face_cascade.empty():
+        print(f"Error: Could not load face cascade from {cascade_path}")
+        return
+
+    # 初始化随机移动的“人脸”
+    faces = []
+    for _ in range(2):
+        faces.append({
+            'x': random.randint(50, width-150),
             'y': random.randint(50, height-150),
-            'vx': random.uniform(2, 6) * random.choice([-1, 1]),
+            'vx': random.uniform(2, 5) * random.choice([-1, 1]),
             'vy': random.uniform(-1, 1)
         })
     
-    # 初始化 OpenCV HOG 检测器（用于真实的人物检测）
-    hog = cv2.HOGDescriptor()
-    hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
-    
-    print("ZMQ Human Detection Sender started. Detecting and sending...")
+    print("ZMQ Real Face Detection Sender started. Detecting and sending...")
     
     try:
         while True:
-            # 1. 获取/创建原始画面
-            raw_frame = create_pedestrian_frame(width, height, pedestrians)
+            # 1. 创建原始画面
+            frame = np.full((height, width, 3), (30, 30, 30), dtype=np.uint8)
             
-            # 2. 真实人物检测逻辑
-            # 在这里我们直接在 raw_frame 上运行 HOG 检测
-            # 注意：由于是模拟画面，HOG 可能检测不到。为了演示，我们手动添加检测框，
-            # 但逻辑上这模拟了从视频源提取特征的过程。
+            # 绘制科技感背景网格
+            for i in range(0, width, 80):
+                cv2.line(frame, (i, 0), (i, height), (50, 50, 50), 1)
+            for i in range(0, height, 80):
+                cv2.line(frame, (0, i), (width, i), (50, 50, 50), 1)
+
+            # 绘制移动的“真实人脸”特征
+            for f in faces:
+                f['x'] += f['vx']
+                f['y'] += f['vy']
+                if f['x'] < 0 or f['x'] > width - 100: f['vx'] *= -1
+                if f['y'] < 0 or f['y'] > height - 120: f['vy'] *= -1
+                draw_realistic_face(frame, int(f['x']), int(f['y']))
+
+            # 2. 运行真实的人脸检测算法 (OpenCV Haar Cascade)
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            detected_faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
             
-            # 模拟检测到的框和人数
-            detected_count = len(pedestrians)
-            for p in pedestrians:
-                x, y = int(p['x']), int(p['y'])
-                # 绘制绿色检测框
-                cv2.rectangle(raw_frame, (x-5, y-5), (x+45, y+105), (0, 255, 0), 2)
-                # 绘制标签
-                cv2.putText(raw_frame, "Person", (x, y-10), 
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+            face_count = len(detected_faces)
             
-            # 添加系统状态文字
-            cv2.putText(raw_frame, f"DETECTIONS: {detected_count}", (20, 40), 
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-            cv2.putText(raw_frame, time.strftime("%Y-%m-%d %H:%M:%S"), (20, height-20), 
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+            # 在画面上绘制检测到的结果
+            for (x, y, w, h) in detected_faces:
+                # 绘制蓝色识别框 (科技感)
+                cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 100, 0), 2)
+                # 绘制四个角点增强科技感
+                length = 15
+                cv2.line(frame, (x, y), (x + length, y), (0, 255, 136), 3)
+                cv2.line(frame, (x, y), (x, y + length), (0, 255, 136), 3)
+                cv2.line(frame, (x+w, y), (x+w-length, y), (0, 255, 136), 3)
+                cv2.line(frame, (x+w, y), (x+w, y+length), (0, 255, 136), 3)
+                
+                cv2.putText(frame, "ID: FACE_DETECTED", (x, y - 10), 
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 136), 1)
+
+            # 添加 HUD 信息
+            cv2.putText(frame, f"FACES DETECTED: {face_count}", (20, 40), 
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 136), 2)
+            cv2.putText(frame, "ALGORITHM: HAAR_CASCADE", (20, 70), 
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 200, 255), 1)
+            cv2.putText(frame, time.strftime("%Y-%m-%d %H:%M:%S"), (20, height-20), 
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 136), 1)
 
             # 3. 编码并发送
-            ret, buffer = cv2.imencode('.jpg', raw_frame)
+            ret, buffer = cv2.imencode('.jpg', frame)
             if ret:
                 jpg_as_text = base64.b64encode(buffer)
-                # 将人数也封装在消息中（或者通过另一个 socket 发送，这里简单处理）
-                # 格式：b"COUNT:2|DATA:base64..."
-                message = f"{detected_count}|".encode() + jpg_as_text
+                message = f"{face_count}|".encode() + jpg_as_text
                 footage_socket.send(message)
             
-            # 每隔一段时间随机增减人数
-            if random.random() < 0.02:
-                if len(pedestrians) < 5:
-                    pedestrians.append({
-                        'x': random.randint(50, width-100),
-                        'y': random.randint(50, height-150),
-                        'vx': random.uniform(2, 6) * random.choice([-1, 1]),
-                        'vy': random.uniform(-1, 1)
-                    })
-                elif len(pedestrians) > 1:
-                    pedestrians.pop(0)
+            # 随机增减人脸数量
+            if random.random() < 0.01:
+                if len(faces) < 4:
+                    faces.append({'x': random.randint(50, width-150), 'y': random.randint(50, height-150),
+                                 'vx': random.uniform(2, 5) * random.choice([-1, 1]), 'vy': random.uniform(-1, 1)})
+                elif len(faces) > 1:
+                    faces.pop(0)
 
-            time.sleep(0.05) # ~20 FPS
+            time.sleep(0.04) # ~25 FPS
             
     except KeyboardInterrupt:
         print("Stopping sender...")

@@ -1,18 +1,18 @@
-# bigchuang - AI 智能人物检测监控系统
+# bigchuang - AI 智能人脸识别系统
 
 ## 1. 项目简介
 
-`bigchuang` 是一个基于 Python Flask 框架和 OpenCV 库实现的 AI 智能人物检测监控系统。它通过 ZeroMQ (ZMQ) 进行视频帧的实时传输，并在一个具有现代科技感的前端界面上展示。该系统集成了**实时人物检测**、数据可视化、AI 数据分析模块，并能利用大模型对**真实检测数据**进行分析并给出智能决策建议。
+`bigchuang` 是一个基于 Python Flask 框架和 OpenCV 库实现的 AI 智能人脸识别监控系统。它通过 ZeroMQ (ZMQ) 进行视频帧的实时传输，并在一个具有现代科技感的前端界面上展示。该系统集成了**实时人脸识别**、数据可视化、AI 数据分析模块，并能利用大模型对**真实识别数据**进行分析并给出智能决策建议。
 
 ## 2. 功能特性
 
-*   **实时人物检测**：后端集成 OpenCV 的 HOG 算法，实时检测视频流中的人物，并在画面上绘制检测框。
-*   **实时视频流**：通过科技感十足的网页界面实时显示带有检测框的视频画面。
-*   **实时数据可视化**：集成 Chart.js，动态展示**人流趋势**、**活跃度统计**等关键指标。
-*   **AI 智能决策建议**：利用大模型（OpenAI API）根据**真实检测到的人数、活跃度**等数据生成专业的监控建议。
-*   **检测日志**：前端新增日志面板，实时记录人物检测事件。
+*   **实时人脸识别**：后端集成 OpenCV 的 **Haar Cascade 分类器**，实时检测视频流中的人脸，并在画面上绘制识别框。
+*   **实时视频流**：通过科技感十足的网页界面实时显示带有识别框的视频画面。
+*   **实时数据可视化**：集成 Chart.js，动态展示**人脸识别趋势**、**识别频次分布**等关键指标。
+*   **AI 智能决策建议**：利用大模型（OpenAI API）根据**真实识别到的人脸数量和活跃度**等数据生成专业的监控建议。
+*   **识别事件日志**：前端新增日志面板，实时记录人脸识别事件。
 *   **模块化设计**：Flask 负责 Web 服务和 API 接口，ZMQ 负责高效数据传输。
-*   **易于扩展**：可在此基础上集成更复杂的 AI 模型（如人脸识别、行为分析）和更多数据源。
+*   **易于扩展**：可在此基础上集成更复杂的 AI 模型（如人脸特征比对、情绪识别）和更多数据源。
 
 ## 3. 环境要求
 
@@ -35,7 +35,7 @@ pip install -r requirements.txt
 
 具体依赖包括：
 *   `Flask`：Web 框架。
-*   `opencv-python`：OpenCV 库的 Python 绑定，用于视频处理和人物检测。
+*   `opencv-python`：OpenCV 库的 Python 绑定，用于视频处理和人脸识别。
 *   `pyzmq`：ZeroMQ 消息队列的 Python 绑定，用于帧传输。
 *   `numpy`：用于处理图像数据。
 *   `openai`：用于调用 OpenAI API 获取 AI 决策建议。
@@ -43,7 +43,7 @@ pip install -r requirements.txt
 ## 4. 硬件设备
 
 *   **摄像头**：一个可用的 USB 摄像头或 IP 摄像头（如果使用 IP 摄像头，需要修改 `mock_sender.py` 中的 `cv2.VideoCapture()` 参数）。
-*   **计算资源**：由于涉及视频处理、实时人物检测和 AI 推理，建议使用性能较好的 CPU 和足够的内存。如果需要进行复杂的 AI 模型推理，可能需要 GPU 支持。
+*   **计算资源**：由于涉及视频处理、实时人脸识别和 AI 推理，建议使用性能较好的 CPU 和足够的内存。如果需要进行复杂的 AI 模型推理，可能需要 GPU 支持。
 
 ## 5. 安装与启动
 
@@ -70,13 +70,13 @@ pip install -r requirements.txt
 
 **重要：请务必先启动发送端！**
 
-启动 `mock_sender.py` 脚本，它将作为 ZMQ 发布者在 `tcp://*:5555` 端口上绑定并发送**模拟人物检测视频帧**：
+启动 `mock_sender.py` 脚本，它将作为 ZMQ 发布者在 `tcp://*:5555` 端口上绑定并发送**模拟人脸识别视频帧**：
 
 ```bash
 python3 mock_sender.py
 ```
 
-`mock_sender.py` 现在会生成一个包含模拟人物移动的画面，并使用 OpenCV 的 HOG 算法进行人物检测，在检测到的人物周围绘制检测框。
+`mock_sender.py` 现在会生成一个包含模拟人脸移动的画面，并使用 OpenCV 的 Haar Cascade 算法进行人脸检测，在检测到的人脸周围绘制识别框。
 
 ### 5.4 启动 Flask 应用
 
@@ -88,7 +88,7 @@ python3 app.py
 
 ### 5.5 访问系统界面
 
-在 Flask 应用和视频流发送端都成功启动后，您可以通过浏览器访问以下地址查看实时人物检测视频流、数据可视化和 AI 智能建议：
+在 Flask 应用和视频流发送端都成功启动后，您可以通过浏览器访问以下地址查看实时人脸识别视频流、数据可视化和 AI 智能建议：
 
 ```
 http://localhost:5000/
@@ -114,10 +114,10 @@ http://localhost:5000/
 ```
 bigchuang/
 ├── app.py                  # Flask 主应用文件，处理 Web 请求、视频流接收和 AI 建议 API
-├── mock_sender.py          # 模拟人物检测视频流发送端，用于测试
+├── mock_sender.py          # 模拟人脸识别视频流发送端，用于测试
 ├── requirements.txt        # Python 依赖列表
 ├── templates/              # HTML 模板文件
-│   └── index.html          # 科技感人物检测显示页面，集成数据可视化和 AI 建议
+│   └── index.html          # 科技感人脸识别显示页面，集成数据可视化和 AI 建议
 ├── static/                 # 静态资源文件 (CSS, JS, 图片等)
 ├── screenshots/            # 项目运行截图
 └── modules/                # 其他模块 (如果存在)
@@ -137,17 +137,17 @@ bigchuang/
 
 ![Startup Steps](screenshots/startup_steps.png)
 
-### 8.3 实时人物检测界面
+### 8.3 实时人脸识别界面
 
-以下是项目升级后的前端界面截图，展示了科技感十足的 UI 设计、实时人物检测视频流、检测日志、AI 智能决策建议以及人流趋势和活跃度统计图表。
+以下是项目升级后的前端界面截图，展示了科技感十足的 UI 设计、实时人脸识别视频流、识别日志、AI 智能决策建议以及人脸识别趋势和频次分布图表。
 
-![Real-time Person Detection UI](screenshots/person_detection_ui.webp)
+![Real-time Face Recognition UI](screenshots/face_recognition_ui.webp)
 
-### 8.4 人流趋势与活跃度分析
+### 8.4 人脸识别趋势与频次分析
 
-前端界面集成了 Chart.js，动态展示人流趋势和活跃度统计。AI 智能决策建议也会根据这些真实数据实时更新。
+前端界面集成了 Chart.js，动态展示人脸识别趋势和频次分布。AI 智能决策建议也会根据这些真实数据实时更新。
 
-![Person Detection Charts Analysis](screenshots/detection_charts_analysis.webp)
+![Face Recognition Charts Analysis](screenshots/face_charts_analysis.webp)
 
 ## 9. 故障排除
 
@@ -159,7 +159,7 @@ bigchuang/
     *   如果使用真实摄像头，请确保摄像头驱动正常，并且 `mock_sender.py` 中的 `cv2.VideoCapture()` 参数正确。
 *   **`zmq.Again` 错误**：这通常表示 ZMQ 接收端在设定的超时时间内没有收到消息。请确保发送端正在正常发送数据。
 *   **AI 建议未更新**：检查 `OPENAI_API_KEY` 是否正确配置，并确保网络连接正常。
-*   **人物检测不准确**：`mock_sender.py` 中使用的是模拟人物和 HOG 检测器。如果需要更精确的检测，可以考虑集成更先进的模型（如 YOLO、SSD）或使用预训练的人脸检测模型。
+*   **人脸识别不准确**：`mock_sender.py` 中使用的是模拟人脸和 Haar Cascade 检测器。Haar Cascade 是一种较早的检测方法，在复杂场景下可能不如深度学习模型（如 MTCNN、RetinaFace）准确。如果需要更精确的识别，可以考虑集成更先进的模型。
 
 ## 10. 许可证
 

@@ -16,7 +16,7 @@ client = OpenAI()
 
 # 用于存储最近的检测数据，供分析和可视化使用
 detection_history = deque(maxlen=50) # 存储 (timestamp, count)
-detection_logs = deque(maxlen=5) # 存储最近的日志条目
+detection_logs = deque(maxlen=10) # 存储最近的日志条目
 
 @app.route('/')
 def index():
@@ -29,11 +29,11 @@ def video_feed():
 @app.route('/ai_suggestion')
 def ai_suggestion():
     """
-    基于真实检测到的历史数据，生成智能监控建议
+    基于真实检测到的人脸历史数据，生成智能监控建议
     """
     global detection_history, detection_logs
     
-    # 提取最近的平均人数和活跃度
+    # 提取最近的平均人脸数和活跃度
     if len(detection_history) > 0:
         avg_count = sum(c for t, c in detection_history) / len(detection_history)
         max_count = max(c for t, c in detection_history)
@@ -43,7 +43,7 @@ def ai_suggestion():
     
     # 构造大模型提示词
     try:
-        prompt = f"当前监控状态：当前检测到 {current_count} 人，最近 5 分钟平均人数 {avg_count:.1f}，峰值 {max_count} 人。请根据这些人流量数据给出一条专业的监控决策建议（20字以内）。"
+        prompt = f"当前监控状态：实时检测到 {current_count} 张人脸，最近平均出现 {avg_count:.1f} 张人脸，峰值 {max_count} 张。请根据这些人脸识别数据给出一条专业的安全监控决策建议（20字以内）。"
         response = client.chat.completions.create(
             model="gpt-4.1-mini",
             messages=[{"role": "user", "content": prompt}],
@@ -51,7 +51,7 @@ def ai_suggestion():
         )
         suggestion = response.choices[0].message.content.strip()
     except Exception as e:
-        suggestion = "建议：保持监控，观察人员流动趋势。"
+        suggestion = "建议：系统运行正常，持续监控人脸识别频率。"
         
     # 构造返回数据
     result = {
@@ -73,7 +73,7 @@ def gen_display():
     footage_socket.setsockopt_string(zmq.SUBSCRIBE, '')
     footage_socket.RCVTIMEO = 2000 
 
-    print("Flask Video Feed connected to ZMQ...")
+    print("Flask Face Recognition connected to ZMQ...")
 
     while True:
         try:
@@ -94,7 +94,7 @@ def gen_display():
                 log_entry = {
                     "time": timestamp,
                     "count": count,
-                    "msg": f"检测到 {count} 名人员"
+                    "msg": f"识别到 {count} 张有效人脸"
                 }
                 detection_logs.append(log_entry)
             
