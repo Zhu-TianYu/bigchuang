@@ -3,54 +3,63 @@ import cv2
 import zmq
 import base64
 import numpy as np
+import time
 
 app = Flask(__name__)
 
+# 全局复用 ZMQ Context
+context = zmq.Context()
 
 @app.route('/')
 def index():
     return render_template("index.html")
-
 
 @app.route('/video_feed')
 def video_feed():
     # 视频流相机对象
     return Response(gen_display(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
-
 def gen_display():
-    # 加上cv2.CAP_DSHOW可以加快打开usb摄像头速度，只有win可以使用
-    # camera = cv2.VideoCapture(1, cv2.CAP_DSHOW)
-
-    context = zmq.Context()
+    # 创建订阅者 Socket
     footage_socket = context.socket(zmq.SUB)
-    footage_socket.connect('tcp://localhost:5555')  # 连接到发送端而不是绑定
+    # 增加连接等待时间，确保能够连接到发布端
+    footage_socket.connect('tcp://127.0.0.1:5555')
     footage_socket.setsockopt_string(zmq.SUBSCRIBE, '')
-    footage_socket.RCVTIMEO = 1000  # 设置接收超时为 1000ms
+    # 设置接收超时，避免生成器永久阻塞
+    footage_socket.RCVTIMEO = 2000 
+
+    print("Video feed generator started, connecting to ZMQ...")
 
     while True:
         try:
-            # print("监听中")
-            frame_str = footage_socket.recv_string()  # 接收TCP传输过来的一帧视频图像数据
-            img = base64.b64decode(frame_str)  # 把数据进行base64解码后储存到内存img变量中
-            npimg = np.frombuffer(img, dtype=np.uint8)  # 把这段缓存解码成一维数组
-            frame = cv2.imdecode(npimg, 3)  # 将一维数组解码为图像source
+            # 接收一帧数据
+            frame_str = footage_socket.recv_string()
+            
+            # 数据解码
+            img_data = base64.b64decode(frame_str)
+            npimg = np.frombuffer(img_data, dtype=np.uint8)
+            frame = cv2.imdecode(npimg, cv2.IMREAD_COLOR)
             
             if frame is None:
                 continue
                 
-            ret, frame_encoded = cv2.imencode('.jpeg', frame)
+            # 图像编码为 JPEG
+            ret, frame_encoded = cv2.imencode('.jpg', frame)
             if ret:
-                # 转换为byte类型的，存储在迭代器中
+                # 按照 MJPEG 格式 yield 数据
                 yield (b'--frame\r\n'
                        b'Content-Type: image/jpeg\r\n\r\n' + frame_encoded.tobytes() + b'\r\n')
+            
         except zmq.Again:
-            # 超时，继续循环
+            # 超时未收到数据，打印日志但不退出
+            # print("ZMQ Receive Timeout: No data from sender.")
             continue
         except Exception as e:
-            print(f"Error processing frame: {e}")
-            continue
-
+            print(f"Error in gen_display: {e}")
+            break
+    
+    footage_socket.close()
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    # 开启 threaded=True 以处理多个并发请求
+    app.run(host='0.0.0.0', port=5000, threaded=True)

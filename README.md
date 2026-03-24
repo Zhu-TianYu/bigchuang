@@ -61,23 +61,23 @@ cd bigchuang
 pip install -r requirements.txt
 ```
 
-### 5.3 启动 Flask 应用
+### 5.3 启动视频流发送端
 
-在项目根目录下运行 `app.py` 启动 Flask Web 服务。这将启动一个在 `http://0.0.0.0:5000` 监听的服务器：
-
-```bash
-python3 app.py
-```
-
-### 5.4 启动视频流发送端
-
-`app.py` 中的 `video_feed` 路由会尝试从 ZMQ 端口 `5555` 接收视频帧。您需要一个独立的程序来发送视频帧。本项目提供了一个 `mock_sender.py` 脚本用于模拟发送视频流：
+首先，启动 `mock_sender.py` 脚本，它将作为 ZMQ 发布者在 `tcp://*:5555` 端口上绑定并发送视频帧：
 
 ```bash
 python3 mock_sender.py
 ```
 
 如果您有真实的摄像头，并且希望使用它作为视频源，您需要修改 `mock_sender.py` 或编写一个新的发送端脚本来从摄像头捕获帧并发送。
+
+### 5.4 启动 Flask 应用
+
+在视频流发送端启动后，在项目根目录下运行 `app.py` 启动 Flask Web 服务。这将启动一个在 `http://0.0.0.0:5000` 监听的服务器，并连接到 ZMQ 视频流：
+
+```bash
+python3 app.py
+```
 
 ### 5.5 访问视频流
 
@@ -93,8 +93,8 @@ http://localhost:5000/
 
 `app.py` 和 `mock_sender.py` (或您的自定义发送端) 之间通过 ZMQ 进行通信。默认端口为 `5555`。
 
-*   在 `app.py` 中，`footage_socket.connect("tcp://localhost:5555")` 表示 Flask 应用连接到 `localhost` 的 `5555` 端口。
 *   在 `mock_sender.py` 中，`footage_socket.bind("tcp://*:5555")` 表示发送端在 `5555` 端口上等待连接。
+*   在 `app.py` 中，`footage_socket.connect("tcp://127.0.0.1:5555")` 表示 Flask 应用连接到 `localhost` 的 `5555` 端口。
 
 如果您需要更改端口，请确保 `app.py` 和发送端脚本中的端口号保持一致。
 
@@ -149,13 +149,13 @@ bigchuang/
 
 以下是项目前端页面的截图，您可以在浏览器中访问 `http://localhost:5000/` 查看。
 
-![Frontend Main Page](screenshots/frontend_main_page.webp)
+![Frontend Main Page](screenshots/working_frontend_with_video.webp)
 
 ### 8.4 实时视频流效果
 
 当 Flask 应用和视频发送端都正常运行时，前端页面将显示实时视频流。下图展示了模拟视频流的效果。
 
-![Real-time Video Stream](screenshots/frontend_video_stream.webp)
+![Real-time Video Stream](screenshots/working_frontend_video_frame2.webp)
 
 ## 9. 故障排除
 
