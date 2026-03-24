@@ -93,8 +93,8 @@ http://localhost:5000/
 
 `app.py` 和 `mock_sender.py` (或您的自定义发送端) 之间通过 ZMQ 进行通信。默认端口为 `5555`。
 
-*   在 `app.py` 中，`footage_socket.bind("tcp://*:5555")` 表示 Flask 应用在 `5555` 端口上等待连接。
-*   在 `mock_sender.py` 中，`footage_socket.connect("tcp://localhost:5555")` 表示发送端连接到 `localhost` 的 `5555` 端口。
+*   在 `app.py` 中，`footage_socket.connect("tcp://localhost:5555")` 表示 Flask 应用连接到 `localhost` 的 `5555` 端口。
+*   在 `mock_sender.py` 中，`footage_socket.bind("tcp://*:5555")` 表示发送端在 `5555` 端口上等待连接。
 
 如果您需要更改端口，请确保 `app.py` 和发送端脚本中的端口号保持一致。
 
@@ -127,10 +127,37 @@ bigchuang/
 ├── templates/              # HTML 模板文件
 │   └── index.html          # 视频流显示页面
 ├── static/                 # 静态资源文件 (CSS, JS, 图片等)
+├── screenshots/            # 项目运行截图
 └── modules/                # 其他模块 (如果存在)
 ```
 
-## 8. 故障排除
+## 8. 运行成果展示
+
+### 8.1 系统架构图
+
+下图展示了本项目的系统架构，包括 Web 浏览器、Flask 应用、ZMQ 通信以及视频发送端之间的关系。
+
+![System Architecture](screenshots/system_architecture.png)
+
+### 8.2 系统启动步骤
+
+下图详细说明了如何启动本项目的各个组件。
+
+![Startup Steps](screenshots/startup_steps.png)
+
+### 8.3 前端页面展示
+
+以下是项目前端页面的截图，您可以在浏览器中访问 `http://localhost:5000/` 查看。
+
+![Frontend Main Page](screenshots/frontend_main_page.webp)
+
+### 8.4 实时视频流效果
+
+当 Flask 应用和视频发送端都正常运行时，前端页面将显示实时视频流。下图展示了模拟视频流的效果。
+
+![Real-time Video Stream](screenshots/frontend_video_stream.webp)
+
+## 9. 故障排除
 
 *   **`ModuleNotFoundError`**：确保所有依赖都已通过 `pip install -r requirements.txt` 安装。
 *   **端口占用**：如果 Flask 启动失败并提示端口 `5000` 被占用，请检查是否有其他程序正在使用该端口，或者修改 `app.py` 中的 `app.run(port=...)` 来使用其他端口。
@@ -140,6 +167,6 @@ bigchuang/
     *   如果使用真实摄像头，请确保摄像头驱动正常，并且 `cv2.VideoCapture()` 参数正确。
 *   **`zmq.Again` 错误**：这通常表示 ZMQ 接收端在设定的超时时间内没有收到消息。请确保发送端正在正常发送数据。
 
-## 9. 许可证
+## 10. 许可证
 
 [在此处添加您的许可证信息，例如 MIT License 或 Apache License 2.0]

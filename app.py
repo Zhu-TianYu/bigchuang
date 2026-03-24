@@ -24,7 +24,7 @@ def gen_display():
 
     context = zmq.Context()
     footage_socket = context.socket(zmq.SUB)
-    footage_socket.bind('tcp://*:5555')
+    footage_socket.connect('tcp://localhost:5555')  # 连接到发送端而不是绑定
     footage_socket.setsockopt_string(zmq.SUBSCRIBE, '')
     footage_socket.RCVTIMEO = 1000  # 设置接收超时为 1000ms
 

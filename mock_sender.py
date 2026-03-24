@@ -6,15 +6,17 @@ import numpy as np
 
 def send_video():
     context = zmq.Context()
-    footage_socket = context.socket(zmq.PAIR)
-    # 尝试连接到 Flask 绑定的端口
-    footage_socket.connect('tcp://localhost:5555')
+    footage_socket = context.socket(zmq.PUB)
+    # 绑定到端口而不是连接
+    footage_socket.bind('tcp://*:5555')
     
     # 创建一个简单的图像（例如，一个移动的圆圈）
     width, height = 640, 480
     x = 0
     
     print("开始模拟发送视频流...")
+    time.sleep(1)  # 给订阅者时间连接
+    
     try:
         while True:
             # 创建黑色背景
