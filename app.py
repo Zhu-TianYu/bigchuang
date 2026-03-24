@@ -6,14 +6,17 @@ import numpy as np
 import time
 import json
 from openai import OpenAI
+from collections import deque
 
 app = Flask(__name__)
 
-# 全局复用 ZMQ Context
+# 全局变量
 context = zmq.Context()
-
-# 初始化 OpenAI 客户端 (Manus 环境已预配置)
 client = OpenAI()
+
+# 用于存储最近的检测数据，供分析和可视化使用
+detection_history = deque(maxlen=50) # 存储 (timestamp, count)
+detection_logs = deque(maxlen=5) # 存储最近的日志条目
 
 @app.route('/')
 def index():
@@ -26,16 +29,21 @@ def video_feed():
 @app.route('/ai_suggestion')
 def ai_suggestion():
     """
-    提供大模型生成的智能建议
+    基于真实检测到的历史数据，生成智能监控建议
     """
-    # 模拟从实时数据中提取特征
-    mock_data = {
-        "brightness": round(np.random.uniform(70, 95), 2),
-        "motion": round(np.random.uniform(20, 80), 2)
-    }
+    global detection_history, detection_logs
     
+    # 提取最近的平均人数和活跃度
+    if len(detection_history) > 0:
+        avg_count = sum(c for t, c in detection_history) / len(detection_history)
+        max_count = max(c for t, c in detection_history)
+        current_count = detection_history[-1][1]
+    else:
+        avg_count, max_count, current_count = 0, 0, 0
+    
+    # 构造大模型提示词
     try:
-        prompt = f"当前视频监控数据：亮度 {mock_data['brightness']}%，运动活跃度 {mock_data['motion']}%。请给出一条简短的专业监控建议（20字以内）。"
+        prompt = f"当前监控状态：当前检测到 {current_count} 人，最近 5 分钟平均人数 {avg_count:.1f}，峰值 {max_count} 人。请根据这些人流量数据给出一条专业的监控决策建议（20字以内）。"
         response = client.chat.completions.create(
             model="gpt-4.1-mini",
             messages=[{"role": "user", "content": prompt}],
@@ -43,38 +51,61 @@ def ai_suggestion():
         )
         suggestion = response.choices[0].message.content.strip()
     except Exception as e:
-        suggestion = "系统建议：保持当前监控频率，定期检查设备。"
+        suggestion = "建议：保持监控，观察人员流动趋势。"
         
-    return jsonify({
+    # 构造返回数据
+    result = {
         "suggestion": suggestion,
-        "data": mock_data
-    })
+        "current_count": current_count,
+        "avg_count": round(avg_count, 2),
+        "max_count": max_count,
+        "logs": list(detection_logs),
+        "history": list(detection_history)
+    }
+    
+    return jsonify(result)
 
 def gen_display():
+    global detection_history, detection_logs
+    
     footage_socket = context.socket(zmq.SUB)
     footage_socket.connect('tcp://127.0.0.1:5555')
     footage_socket.setsockopt_string(zmq.SUBSCRIBE, '')
     footage_socket.RCVTIMEO = 2000 
 
+    print("Flask Video Feed connected to ZMQ...")
+
     while True:
         try:
-            frame_str = footage_socket.recv_string()
-            img_data = base64.b64decode(frame_str)
-            npimg = np.frombuffer(img_data, dtype=np.uint8)
-            frame = cv2.imdecode(npimg, cv2.IMREAD_COLOR)
+            # 接收格式：b"COUNT|DATA"
+            message = footage_socket.recv()
+            parts = message.split(b'|', 1)
+            if len(parts) < 2: continue
             
-            if frame is None:
-                continue
+            count = int(parts[0].decode())
+            img_data = base64.b64decode(parts[1])
             
-            ret, frame_encoded = cv2.imencode('.jpg', frame)
-            if ret:
-                yield (b'--frame\r\n'
-                       b'Content-Type: image/jpeg\r\n\r\n' + frame_encoded.tobytes() + b'\r\n')
+            # 更新历史数据
+            timestamp = time.strftime("%H:%M:%S")
+            detection_history.append((timestamp, count))
+            
+            # 如果人数发生变化，记录日志
+            if len(detection_logs) == 0 or detection_logs[-1]['count'] != count:
+                log_entry = {
+                    "time": timestamp,
+                    "count": count,
+                    "msg": f"检测到 {count} 名人员"
+                }
+                detection_logs.append(log_entry)
+            
+            # 将数据直接发送给前端
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + img_data + b'\r\n')
             
         except zmq.Again:
             continue
         except Exception as e:
-            print(f"Error: {e}")
+            print(f"Error in gen_display: {e}")
             break
     
     footage_socket.close()
