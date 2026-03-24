@@ -23,21 +23,34 @@ def gen_display():
     # camera = cv2.VideoCapture(1, cv2.CAP_DSHOW)
 
     context = zmq.Context()
-    footage_socket = context.socket(zmq.PAIR)
+    footage_socket = context.socket(zmq.SUB)
     footage_socket.bind('tcp://*:5555')
+    footage_socket.setsockopt_string(zmq.SUBSCRIBE, '')
+    footage_socket.RCVTIMEO = 1000  # 设置接收超时为 1000ms
 
     while True:
-        # print("监听中")
-        frame = footage_socket.recv_string()  # 接收TCP传输过来的一帧视频图像数据
-        img = base64.b64decode(frame)  # 把数据进行base64解码后储存到内存img变量中
-        npimg = np.frombuffer(img, dtype=np.uint8)  # 把这段缓存解码成一维数组
-        frame = cv2.imdecode(npimg, 3)  # 将一维数组解码为图像source
-        ret, frame = cv2.imencode('.jpeg', frame)
-        if ret:
-            # 转换为byte类型的，存储在迭代器中
-            yield (b'--frame\r\n'
-                   b'Content-Type: image/jpeg\r\n\r\n' + frame.tobytes() + b'\r\n')
+        try:
+            # print("监听中")
+            frame_str = footage_socket.recv_string()  # 接收TCP传输过来的一帧视频图像数据
+            img = base64.b64decode(frame_str)  # 把数据进行base64解码后储存到内存img变量中
+            npimg = np.frombuffer(img, dtype=np.uint8)  # 把这段缓存解码成一维数组
+            frame = cv2.imdecode(npimg, 3)  # 将一维数组解码为图像source
+            
+            if frame is None:
+                continue
+                
+            ret, frame_encoded = cv2.imencode('.jpeg', frame)
+            if ret:
+                # 转换为byte类型的，存储在迭代器中
+                yield (b'--frame\r\n'
+                       b'Content-Type: image/jpeg\r\n\r\n' + frame_encoded.tobytes() + b'\r\n')
+        except zmq.Again:
+            # 超时，继续循环
+            continue
+        except Exception as e:
+            print(f"Error processing frame: {e}")
+            continue
 
 
 if __name__ == '__main__':
-    app.run()
+    app.run(host='0.0.0.0', port=5000)
